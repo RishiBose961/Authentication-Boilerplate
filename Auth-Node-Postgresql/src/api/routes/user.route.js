@@ -1,9 +1,15 @@
 import express from "express";
-import { getUserProfile, loginUser, registerUser } from "../controllers/user.controller.js";
+import {
+  getUserProfile,
+  loginUser,
+  registerUser,
+} from "../controllers/user.controller.js";
 import { authenticateUser } from "../middleware/authenticateUser.middleware.js";
+import validate from "../middleware/validate.middleware.js";
+import { createUserSchema } from "../validators/user.validator.js";
 const router = express.Router();
 
-router.post("/signup", registerUser);
+router.post("/signup", validate(createUserSchema), registerUser);
 
 router.post("/login", loginUser);
 
