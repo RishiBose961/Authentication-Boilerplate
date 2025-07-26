@@ -1,11 +1,11 @@
-import { hashPassword } from "../../utils/password.utils.js";
-import User from "../models/user.model.js";
+import prisma from "../../../config/prisma.js";
 import { randomBytes } from "crypto";
 import jwt from "jsonwebtoken";
+import { hashPassword } from "../../utils/password.utils.js";
+
 export const registerUserService = async ({ email, password }) => {
   // Check if user already exists
-  const existingUser = await User.findOne({ email });
-
+  const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
     throw new Error("User already exists with this email.");
   }
@@ -14,14 +14,19 @@ export const registerUserService = async ({ email, password }) => {
   const hashedPassword = await hashPassword(password, salt);
 
   // Create new user
-  const user = new User({ email, password: hashedPassword, salt });
-  const savedUser = await user.save();
+  const savedUser = await prisma.user.create({
+    data: {
+      email,
+      password: hashedPassword,
+      salt,
+    },
+  });
 
   return savedUser;
 };
 
 export const loginUserService = async ({ email, password }) => {
-  const user = await User.findOne({ email });
+  const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
     return { message: "User no exists with this email." };
   }
@@ -32,7 +37,7 @@ export const loginUserService = async ({ email, password }) => {
       expiresIn: "5d",
     });
     return {
-      _id: user._id,
+      _id: user.id,
       email: user.email,
       token,
       message: "User logged in successfully",
@@ -41,7 +46,10 @@ export const loginUserService = async ({ email, password }) => {
 };
 
 export const getUserProfileService = async (req, res) => {
-  const user = await User.findById(req.user.id).select("-password -salt");
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    select: { id: true, email: true, createdAt: true, updatedAt: true },
+  });
   if (!user) {
     return res.status(404).json({ message: "User not found" });
   }
